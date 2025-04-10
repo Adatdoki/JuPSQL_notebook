@@ -1,0 +1,209 @@
+######### 2025.03.26 16:45:00 ################################## ADATDOKI ######
+# A Colab Secrets segítségével kezeli a PostgreSQL jelszót.
+# Szabályos PostgreSQL lekérdezéseket fogad szöveges formában.
+# Opcionálisan megadható tábla nevét használ, de alapértelmezettként a "teleprompter_hashed" táblát célozza.
+# A lekérdezés eredményeit pandas DataFrame-ként adja vissza. (SQLAlchemy)
+# connection pool-lal és timeouttal (1 perc = 60 másodperc)
+#
+# Interaktív PSQL lekérdezés futtatása és eredmény megjelenítése.
+#
+# A függvény egy szövegmezőt és egy futtatás gombot jelenít meg, amelyek segítségével
+# a felhasználó PostgreSQL lekérdezéseket futtathat. Az eredményeket pandas DataFrame-ként
+# jeleníti meg, és méri a lekérdezés végrehajtási idejét.
+#
+# Paraméterek:
+#     width (int): A szövegmező szélessége pixelben (alapértelmezett: 1000).
+#     height (int): A szövegmező magassága pixelben (alapértelmezett: 200).
+#########1#########2#########3#########4#########5#########6#########7#########8
+
+# Importok
+import importlib.util
+import sys
+import subprocess
+from ipywidgets import widgets, HBox
+from IPython.display import display
+import pandas as pd
+import time  # Időméréshez
+
+def install_if_missing(package_name, pip_name=None):
+    if importlib.util.find_spec(package_name) is None:
+        print(f"📦 Telepítés: {pip_name or package_name}")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name or package_name])
+    else:
+        print(f"✅ Már telepítve: {package_name}")
+
+# Könyvtárak ellenőrzése és telepítése
+install_if_missing("psycopg2", "psycopg2-binary")
+install_if_missing("sqlalchemy")
+install_if_missing("ipywidgets")
+
+# Globális engine létrehozása (csak egyszer inicializáljuk)
+connection_string = None
+engine = None
+
+from sqlalchemy import create_engine, text
+def init_db_connection():
+    """Kapcsolat inicializálása, ha még nem létezik."""
+    global engine, connection_string
+    if engine is None:
+        # Kapcsolati adatok megadása
+        host = "hh-pgsql-public.ebi.ac.uk"  # pl. "localhost" vagy egy IP-cím
+        database = "pfmegrnargs" # Cseréld ki az adatbázis nevére
+        user = "reader" # Cseréld ki a felhasználónevedre
+        password = "NWDMCE5xdipIjRrp" # Cseréld ki a sajátra
+        # password = userdata.get("password") # Jelszó lekérése a Colab Secrets-ből
+        port = "5432"  # Alapértelmezett PostgreSQL port
+
+        # SQLAlchemy kapcsolat URI
+        connection_string = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+
+        # Engine létrehozása connection pool-lal és timeouttal (1 perc = 60 másodperc)
+        engine = create_engine(
+            connection_string,
+            pool_size=5,          # Maximum 5 kapcsolat a pool-ban
+            max_overflow=0,       # Nincs további kapcsolat a pool-on kívül
+            pool_timeout=30,      # 30 másodperc várakozás, ha nincs szabad kapcsolat
+            pool_recycle=60       # 60 másodperc után újrahasznosítja a kapcsolatot (timeout)
+        )
+        print("Kapcsolat inicializálva!")
+    return engine
+
+# PostgreSQL lekérdező függvény
+def run_psql_query(query, table_name="teleprompter_hashed"):
+    """
+    Függvény PostgreSQL lekérdezések futtatására.
+
+    Paraméterek:
+        query (str): A futtatandó SQL lekérdezés szövege.
+        table_name (str, opcionális): A célzott tábla neve. Alapértelmezett: "pfmegrnargs".
+
+    Visszatér:
+        pandas.DataFrame: A lekérdezés eredménye DataFrame formátumban.
+    """
+    # Kapcsolat inicializálása
+    engine = init_db_connection()
+
+    try:
+        # Ha a query nem tartalmaz FROM vagy JOIN-t, fűzzük hozzá az alapértelmezett táblát
+        query_upper = query.upper()
+        if "FROM" not in query_upper and "JOIN" not in query_upper:
+            query = f"SELECT * FROM {table_name} {query}"
+        else:
+            query = query
+
+        # Lekérdezés futtatása
+        with engine.connect() as connection:
+            df = pd.read_sql(text(query), connection)
+        print(f"Lekérdezés sikeres:\n\n{query}")
+        return df
+
+    except Exception as e:
+        print(f"Hiba történt a lekérdezés során: {e}")
+        return None
+
+# Kapcsolat manuális lezárása (opcionális)
+def close_db_connection():
+    """Kapcsolat lezárása, ha már nincs rá szükség."""
+    global engine
+    if engine:
+        engine.dispose()
+        engine = None
+        print("Kapcsolat lezárva.")
+
+# # Kapcsolat lezárása (opcionális, ha végeztél)
+#   close_db_connection()
+
+# Szükséges függvények és változók listája
+REQUIRED_DEPENDENCIES = [
+    'run_psql_query',  # PSQL lekérdezés futtatásához szükséges függvény
+    'close_db_connection',  # Adatbázis kapcsolat lezárásához szükséges függvény
+    'init_db_connection',  # Adatbázis kapcsolat inicializálásához szükséges függvény
+]
+
+# Hibakezelés: Ellenőrizze, hogy a szükséges függvények és változók léteznek-e
+def check_and_load_dependencies():
+    import importlib.util
+    import sys
+    import subprocess
+
+    def install_if_missing(package_name, pip_name=None):
+        if importlib.util.find_spec(package_name) is None:
+            print(f"📦 Telepítés: {pip_name or package_name}")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name or package_name])
+        else:
+            print(f"✅ Már telepítve: {package_name}")
+
+    try:
+        install_if_missing("psycopg2", "psycopg2-binary")
+        install_if_missing("sqlalchemy")
+        install_if_missing("ipywidgets")
+
+        # Szükséges importok
+        global widgets, HBox, display, pd, time
+        from ipywidgets import widgets, HBox
+        from IPython.display import display
+        import pandas as pd
+        import time
+
+        return True
+
+    except Exception as e:
+        print(f"Hiba a függőségek ellenőrzése/telepítése közben: {e}")
+        return False
+
+# Ciklikus PSQL lekérdezés futtatása és eredmény megjelenítése
+def run_query_loop(width=1000, height=200, row=None):
+    # Ellenőrizze a függőségeket
+    if not check_and_load_dependencies():
+        return
+
+    # Szövegmező a lekérdezés bekéréséhez
+    query_input = widgets.Textarea(
+        value="",
+        placeholder="Adja meg a PSQL lekérdezést...",
+        description="Lekérdezés:",
+        layout={"width": f"{width}px", "height": f"{height}px"},
+    )
+
+    # Gomb a lekérdezés futtatásához
+    run_button = widgets.Button(description="Futtatás")
+
+    # Kimenet megjelenítéséhez
+    output = widgets.Output()
+
+    # Gomb eseménykezelője
+    def on_button_clicked(b):
+        query_value = query_input.value.strip()
+        if query_value.lower() == "exit":
+            with output:
+                print("Kilépés a ciklusból.")
+                close_db_connection()
+            return
+
+        with output:
+            output.clear_output()
+            start_time = time.time()
+            result = run_psql_query(query_value)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+
+            if result is not None:
+                print("\nLekérdezés eredménye:")
+                if row is None:
+                    display(result)
+                else:
+                    display(result.head(row))
+                print(f"\nLekérdezés időtartama: {elapsed_time:.2f} másodperc")
+            else:
+                print("Nem sikerült lekérdezni az adatokat.")
+
+    run_button.on_click(on_button_clicked)
+
+    # Widgetek megjelenítése
+    display(HBox([query_input, run_button]), output)
+
+# Teszt lekérdezés
+# "SELECT * FROM rnc_database LIMIT 5;"
+
+    # Futtatás minta
+run_query_loop(row=None,width=1100, height=250)
