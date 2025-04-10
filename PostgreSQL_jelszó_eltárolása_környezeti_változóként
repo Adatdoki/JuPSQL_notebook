@@ -1,0 +1,6 @@
+import os
+import psycopg2
+import pandas as pd
+
+# PostgreSQL jelszó eltárolása környezeti változóként
+os.environ["JDS_PSQL_learning"] = input("Add meg a jelszavad: ")  # Jelszó bekérése futás közben
