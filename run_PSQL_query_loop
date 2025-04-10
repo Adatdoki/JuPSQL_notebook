@@ -1,7 +1,7 @@
 ######### 2025.03.26 16:45:00 ################################## ADATDOKI ######
 # A Colab Secrets segítségével kezeli a PostgreSQL jelszót.
 # Szabályos PostgreSQL lekérdezéseket fogad szöveges formában.
-# Opcionálisan megadható tábla nevét használ, de alapértelmezettként a "teleprompter_hashed" táblát célozza.
+# Opcionálisan megadható tábla nevét használ, de alapértelmezettként a "alapértelmezett" táblát célozza.
 # A lekérdezés eredményeit pandas DataFrame-ként adja vissza. (SQLAlchemy)
 # connection pool-lal és timeouttal (1 perc = 60 másodperc)
 #
