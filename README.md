@@ -1,6 +1,8 @@
 # JuPSQL_notebook
 Interaktív PSQL lekérdezés futtatása és eredmény megjelenítése.
 
+PostgreSQL lekérdező függvény SQLAlchemy-val, connection pool-lal és timeouttal (1 perc = 60 másodperc) + Interaktív PSQL lekérdezés futtatás eredmény megjelenítéssel. (EGYBEN MINDEN)
+
 A Colab Secrets segítségével kezeli a PostgreSQL jelszót.
 Szabályos PostgreSQL lekérdezéseket fogad szöveges formában.
 Opcionálisan megadható tábla nevét használ, de alapértelmezettként a "teleprompter_hashed" táblát célozza. A lekérdezés eredményeit pandas DataFrame-ként adja vissza. (SQLAlchemy) connection pool-lal és timeouttal (1 perc = 60 másodperc)
